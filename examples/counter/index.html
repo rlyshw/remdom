@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Counter</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f5f5f5;
+    }
+    .counter-app {
+      text-align: center;
+      background: white;
+      padding: 2rem 3rem;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 { margin-bottom: 1rem; color: #333; }
+    #count {
+      font-size: 4rem;
+      font-weight: bold;
+      color: #2563eb;
+      margin: 1rem 0;
+    }
+    .buttons { display: flex; gap: 1rem; justify-content: center; }
+    button {
+      padding: 0.75rem 1.5rem;
+      font-size: 1.25rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: #2563eb;
+      color: white;
+      transition: background 0.15s;
+    }
+    button:hover { background: #1d4ed8; }
+    button:active { background: #1e40af; }
+    #reset-btn { background: #6b7280; }
+    #reset-btn:hover { background: #4b5563; }
+  </style>
+</head>
+<body>
+  <div class="counter-app">
+    <h1>Remote DOM Counter</h1>
+    <div id="count">0</div>
+    <div class="buttons">
+      <button id="dec-btn">-</button>
+      <button id="inc-btn">+</button>
+      <button id="reset-btn">Reset</button>
+    </div>
+    <p style="margin-top: 1rem; color: #999; font-size: 0.875rem;">
+      Open in two tabs — clicks sync between them
+    </p>
+  </div>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "remote-dom",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm --filter @remote-dom/cli dev"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
