@@ -153,7 +153,12 @@
     function startObserver() {
       wk(source);
       // Send initial snapshot so mirror has the starting state
-      mirrorBody.innerHTML = source.innerHTML;
+      // Serialize source children and recreate them in mirror with matching __rdids
+      mirrorBody.innerHTML = "";
+      for (var i = 0; i < source.childNodes.length; i++) {
+        var s = ser(source.childNodes[i]);
+        if (s) mirrorBody.appendChild(mk(s));
+      }
       if (observerInstance) observerInstance.disconnect();
       observerInstance = new MutationObserver(function(muts) {
       var ops = [];
