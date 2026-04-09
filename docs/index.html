@@ -47,7 +47,8 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 8px;
-      min-height: 200px;
+      height: 240px;
+      overflow: hidden;
     }
 
     .anim-pane {
@@ -58,6 +59,7 @@
       padding: 0.75rem 0;
       position: relative;
       overflow: hidden;
+      height: 100%;
     }
 
     .anim-source { color: var(--blue); }
@@ -423,14 +425,14 @@
         grid-template-columns: 1fr;
         gap: 0.5rem;
         padding: 0.75rem 1rem;
-        min-height: auto;
+        height: 560px;
       }
       .anim-particles {
         height: 40px;
       }
       .anim-mirror { text-align: left; }
       .anim-mirror .anim-label { text-align: left; }
-      .anim-source, .anim-mirror { font-size: 0.78rem; }
+      .anim-source, .anim-mirror { font-size: 0.78rem; height: auto; min-height: 230px; }
     }
 
     a { color: var(--accent); text-decoration: none; }
