@@ -4,7 +4,7 @@
 
 Run headless Chrome on a server. Stream structured DOM ops — not pixels — to any client over WebSocket. Humans and AI agents connect to the same session.
 
-> DOM streaming is like streaming sheet music instead of an audio recording — the client still has to "perform" the rendering locally. The stream is semantic: we know "a button was added," not "pixels changed at coordinates 340,220." This makes the DOM machine-readable, persistent, and multiplexable.
+> The stream is semantic: structured ops, not pixels. We know "a button was added," not "pixels changed at coordinates 340,220." This makes the DOM machine-readable, persistent, and multiplexable.
 >
 > [Read more: Why encode the DOM? →](docs/PHILOSOPHY.md)
 
