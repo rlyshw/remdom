@@ -1,10 +1,10 @@
-import type { MutationOp, InputOp } from "@remote-dom/protocol";
-import { DomApplier } from "./dom-applier.js";
-import { createInputCapture, type InputCapture } from "./input-capture.js";
+import type { MutationOp, InputOp } from "@remdom/protocol";
+import { DomApplier } from "@remdom/dom";
+import { createInputCapture, type InputCapture } from "@remdom/dom";
 import { OptimisticManager } from "./optimistic.js";
 
-export { DomApplier } from "./dom-applier.js";
-export { createInputCapture } from "./input-capture.js";
+// Re-export DOM primitives for convenience
+export { DomApplier, createInputCapture } from "@remdom/dom";
 export { OptimisticManager } from "./optimistic.js";
 
 export interface RemoteDomClient {
@@ -14,7 +14,6 @@ export interface RemoteDomClient {
 export interface ClientOptions {
   container: HTMLElement;
   url: string;
-  /** Auto-reconnect on disconnect (default: true) */
   reconnect?: boolean;
   onConnect?: () => void;
   onDisconnect?: () => void;

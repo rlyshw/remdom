@@ -1,8 +1,8 @@
 import { WebSocketServer, type WebSocket } from "ws";
 import type { IncomingMessage } from "node:http";
 import type { Server as HttpServer } from "node:http";
-import { jsonCodec, type Codec } from "@remote-dom/protocol";
-import type { InputOp } from "@remote-dom/protocol";
+import { jsonCodec, type Codec } from "@remdom/protocol";
+import type { InputOp } from "@remdom/protocol";
 import type { Session } from "./session.js";
 
 export interface Fanout {

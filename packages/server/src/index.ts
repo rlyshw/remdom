@@ -1,30 +1,21 @@
+/**
+ * @remdom/server — core WebSocket server primitives for remdom sessions.
+ *
+ * Transport layer only. Does NOT include any specific DOM backend —
+ * sessions are brought by consumers (see @remdom/puppeteer for a
+ * headless Chrome backend).
+ */
+
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { createFanout, type Fanout } from "./fanout.js";
 import type { Session } from "./session.js";
 
 // Re-exports
-export { createSession } from "./session.js";
-export { createDomBridge, linkedomProvider } from "./dom-bridge.js";
-export { dispatchInputOp } from "./input-handler.js";
 export { createFanout } from "./fanout.js";
-export { createIsolate } from "./isolate-pool.js";
-export { installScriptInterceptor } from "./script-interceptor.js";
-export { createBrowserEnv } from "./browser-env.js";
-export { createPuppeteerBridge } from "./puppeteer-bridge.js";
-export { createPuppeteerSession } from "./puppeteer-session.js";
-export { createBrowserPool } from "./browser-pool.js";
-export type { PuppeteerBridge } from "./puppeteer-bridge.js";
-export type { PuppeteerSession, PuppeteerSessionOptions } from "./puppeteer-session.js";
-export type { BrowserPool, BrowserPoolOptions } from "./browser-pool.js";
 export { getClientPage } from "./client-page.js";
-export { loadFromDirectory, loadFromUrl, extractScripts } from "./content.js";
-
-export type { Session, SessionOptions } from "./session.js";
-export type { DomBridge, DomProvider, MutationCallback } from "./dom-bridge.js";
+export type { Session } from "./session.js";
 export type { Fanout } from "./fanout.js";
-export type { Isolate } from "./isolate-pool.js";
 export type { ClientPageOptions } from "./client-page.js";
-export type { LoadedContent } from "./content.js";
 
 export interface ServerOptions {
   /**
@@ -78,7 +69,7 @@ export function createRemoteDomServer(
     removeSession(id: string) {
       const session = sessions.get(id);
       if (session) {
-        session.destroy();
+        void session.destroy();
         sessions.delete(id);
       }
     },
@@ -92,7 +83,7 @@ export function createRemoteDomServer(
 
     close() {
       for (const session of sessions.values()) {
-        session.destroy();
+        void session.destroy();
       }
       sessions.clear();
       fanout.destroy();
