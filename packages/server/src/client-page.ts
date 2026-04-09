@@ -21,12 +21,12 @@ export function getClientPage(options: ClientPageOptions = {}): string {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${title}</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: system-ui, -apple-system, sans-serif; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+    body { font-family: system-ui, -apple-system, sans-serif; overflow: hidden !important; height: 100vh !important; margin: 0 !important; padding: 0 !important; }
+    #rdm-chrome *, #rdm-bookmarks *, #rdm-status { margin: 0; padding: 0; box-sizing: border-box; }
     #rdm-chrome {
-      display: none !important; position: sticky !important; top: 0 !important; z-index: 99998 !important;
-      background: #1a1a2e !important; padding: 6px 10px !important;
-      border-bottom: 1px solid #333 !important; flex-shrink: 0 !important;
+      display: none !important; position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important;
+      z-index: 99998 !important; background: #1a1a2e !important; padding: 6px 10px !important;
+      border-bottom: 1px solid #333 !important;
     }
     #rdm-chrome.visible { display: flex !important; align-items: center !important; gap: 8px !important; }
     #rdm-url-form { display: flex; flex: 1; gap: 6px; }
@@ -53,8 +53,9 @@ export function getClientPage(options: ClientPageOptions = {}): string {
     #rdm-go:hover { background: #5e5eff; }
     #rdm-nav-status { color: #888; font-size: 12px; white-space: nowrap; }
     #rdm-bookmarks {
-      display: none !important; background: #1a1a2e !important; padding: 2px 10px 6px !important;
-      border-bottom: 1px solid #333 !important; gap: 4px !important; flex-wrap: wrap !important; flex-shrink: 0 !important;
+      display: none !important; position: fixed !important; top: 40px !important; left: 0 !important; right: 0 !important;
+      z-index: 99997 !important; background: #1a1a2e !important; padding: 4px 10px !important;
+      border-bottom: 1px solid #333 !important; gap: 4px !important; flex-wrap: wrap !important;
     }
     #rdm-bookmarks.visible { display: flex !important; }
     .rdm-bookmark {
@@ -64,8 +65,9 @@ export function getClientPage(options: ClientPageOptions = {}): string {
     }
     .rdm-bookmark:hover { background: #2a2a4e; color: #ddd; border-color: #666; }
     #remote-dom-root {
-      flex: 1 !important; width: 100% !important; overflow: auto !important;
-      display: block !important; position: relative !important;
+      width: 100% !important; overflow: auto !important;
+      display: block !important; position: fixed !important;
+      top: 68px !important; bottom: 0 !important; left: 0 !important; right: 0 !important;
     }
     .rdm-status {
       position: fixed; bottom: 8px; right: 8px;
@@ -81,6 +83,7 @@ export function getClientPage(options: ClientPageOptions = {}): string {
   <div id="rdm-chrome">
     <button id="rdm-back" class="rdm-nav-btn" disabled>&larr;</button>
     <button id="rdm-fwd" class="rdm-nav-btn" disabled>&rarr;</button>
+    <button id="rdm-home" class="rdm-nav-btn">&#8962;</button>
     <form id="rdm-url-form">
       <input id="rdm-url" type="text" placeholder="Enter URL..." spellcheck="false" autocomplete="off">
       <button id="rdm-go" type="submit">Go</button>
@@ -103,6 +106,32 @@ export function getClientPage(options: ClientPageOptions = {}): string {
     const showUrlBar = ${urlBar};
     if (showUrlBar) rdmChrome.classList.add("visible");
 
+    // Select all text on URL bar focus
+    urlInput.addEventListener("focus", () => urlInput.select());
+
+    // Intercept form submissions in proxied content
+    container.addEventListener("submit", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const form = e.target;
+      if (!form || !form.action) return;
+      const url = form.action;
+      if (url && url !== "about:blank" && !url.startsWith("javascript:")) {
+        navStatus.textContent = "loading...";
+        if (wsSend) wsSend({ type: "navigate", url: url });
+      }
+    }, true);
+
+    // Intercept window.open / target="_blank" links by preventing new tabs
+    // Also catch any remaining <a> clicks that might slip through
+    container.addEventListener("click", (e) => {
+      const target = e.target;
+      if (target && target.tagName === "BUTTON" && target.type === "submit") {
+        // Let the form submit handler catch it
+        return;
+      }
+    }, false);
+
     // Navigation history
     const backBtn = document.getElementById("rdm-back");
     const fwdBtn = document.getElementById("rdm-fwd");
@@ -123,6 +152,34 @@ export function getClientPage(options: ClientPageOptions = {}): string {
       if (backBtn) backBtn.disabled = navIndex <= 0;
       if (fwdBtn) fwdBtn.disabled = navIndex >= navHistory.length - 1;
     }
+
+    // Home button — show bookmarks page
+    const homeBtn = document.getElementById("rdm-home");
+    function showHomePage() {
+      urlInput.value = "";
+      navStatus.textContent = "";
+      container.innerHTML = '<div style="max-width:600px;margin:60px auto;padding:20px;font-family:system-ui,sans-serif;color:#ccc">' +
+        '<h1 style="color:#fff;margin-bottom:8px">remote-dom</h1>' +
+        '<p style="color:#888;margin-bottom:32px">Enter a URL or click a bookmark to start browsing.</p>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:12px">' +
+        bookmarks.map(function(b) {
+          return '<a href="#" onclick="return false" data-rdm-nav="' + b.url + '" style="display:block;padding:12px 20px;background:#1e1e3a;border:1px solid #444;border-radius:8px;color:#aad;text-decoration:none;font-size:14px">' + b.label + '</a>';
+        }).join('') +
+        '</div></div>';
+      container.style.background = '#0f0f23';
+      // Wire up homepage bookmark clicks
+      container.querySelectorAll("[data-rdm-nav]").forEach(function(el) {
+        el.addEventListener("click", function() {
+          var url = el.getAttribute("data-rdm-nav");
+          container.style.background = "";
+          urlInput.value = url;
+          navStatus.textContent = "loading...";
+          if (wsSend) wsSend({ type: "navigate", url: url });
+        });
+      });
+    }
+
+    if (homeBtn) homeBtn.addEventListener("click", showHomePage);
 
     if (backBtn) backBtn.addEventListener("click", function() {
       if (navIndex > 0) {

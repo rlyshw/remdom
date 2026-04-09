@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>remote-dom - Server-Authoritative DOM Streaming</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text-muted: #8b949e;
+      --accent: #58a6ff;
+      --accent-dim: #1f6feb;
+      --green: #3fb950;
+      --purple: #bc8cff;
+      --orange: #d29922;
+      --code-bg: #0d1117;
+      --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Header / Nav ── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(13, 17, 23, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    nav {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      font-family: var(--font-mono);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .logo span { color: var(--accent); }
+
+    .nav-links { display: flex; gap: 1.5rem; }
+    .nav-links a { color: var(--text-muted); font-size: 0.9rem; }
+    .nav-links a:hover { color: var(--text); text-decoration: none; }
+
+    /* ── Sections ── */
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
+
+    section { padding: 4rem 0; }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 5rem 0 4rem;
+      text-align: center;
+    }
+
+    .hero h1 {
+      font-family: var(--font-mono);
+      font-size: 3rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.75rem;
+    }
+
+    .hero h1 span { color: var(--accent); }
+
+    .tagline {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto 1rem;
+    }
+
+    .hero-desc {
+      font-size: 1rem;
+      color: var(--text-muted);
+      max-width: 640px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.7;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 0.7rem 1.5rem;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+
+    .btn-primary {
+      background: var(--accent-dim);
+      color: #fff;
+      border: 1px solid var(--accent-dim);
+    }
+
+    .btn-primary:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      text-decoration: none;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--text-muted);
+      text-decoration: none;
+    }
+
+    /* ── Architecture ── */
+    .arch-diagram {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 2rem;
+      overflow-x: auto;
+      margin: 1.5rem 0;
+    }
+
+    .arch-diagram pre {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    .arch-diagram .highlight { color: var(--accent); }
+    .arch-diagram .green { color: var(--green); }
+    .arch-diagram .purple { color: var(--purple); }
+    .arch-diagram .orange { color: var(--orange); }
+
+    h2 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    h2 span { color: var(--accent); }
+
+    .section-desc {
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+      max-width: 600px;
+    }
+
+    /* ── Features ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+    }
+
+    .feature-card h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      font-family: var(--font-mono);
+    }
+
+    .feature-card p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .feature-label {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.15rem 0.5rem;
+      border-radius: 3px;
+      margin-bottom: 0.75rem;
+    }
+
+    .label-core { background: rgba(88, 166, 255, 0.15); color: var(--accent); }
+    .label-protocol { background: rgba(188, 140, 255, 0.15); color: var(--purple); }
+    .label-arch { background: rgba(63, 185, 80, 0.15); color: var(--green); }
+
+    /* ── Code blocks ── */
+    .code-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      margin: 1.25rem 0;
+    }
+
+    .code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 1rem;
+      background: rgba(48, 54, 61, 0.4);
+      border-bottom: 1px solid var(--border);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .code-block pre {
+      padding: 1.25rem;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.65;
+      color: var(--text);
+      margin: 0;
+    }
+
+    .code-block .kw { color: #ff7b72; }
+    .code-block .str { color: #a5d6ff; }
+    .code-block .cmt { color: #8b949e; }
+    .code-block .fn { color: #d2a8ff; }
+    .code-block .num { color: #79c0ff; }
+    .code-block .type { color: #ffa657; }
+
+    /* ── Protocol ── */
+    .protocol-ops {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
+
+    @media (max-width: 640px) {
+      .protocol-ops { grid-template-columns: 1fr; }
+    }
+
+    .op-group h3 {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .op-group ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    .op-group li {
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      padding: 0.3rem 0;
+    }
+
+    .op-group li code {
+      color: var(--accent);
+      background: rgba(88, 166, 255, 0.1);
+      padding: 0.1rem 0.4rem;
+      border-radius: 3px;
+      font-size: 0.8rem;
+    }
+
+    /* ── Get Started ── */
+    .steps {
+      counter-reset: step;
+    }
+
+    .step {
+      position: relative;
+      padding-left: 3rem;
+      margin-bottom: 2rem;
+    }
+
+    .step::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 2rem;
+      height: 2rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .step h3 {
+      font-size: 1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .step p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+    }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .hero h1 { font-size: 2rem; }
+      .tagline { font-size: 1.05rem; }
+      section { padding: 3rem 0; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <nav>
+    <div class="logo">remote<span>-</span>dom</div>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#architecture">Architecture</a>
+      <a href="https://github.com/rlyshw/remdom/blob/master/docs/PHILOSOPHY.md">Philosophy</a>
+      <a href="https://github.com/rlyshw/remdom">GitHub</a>
+    </div>
+  </nav>
+</header>
+
+<main class="container">
+
+  <!-- Hero -->
+  <section class="hero">
+    <h1>remote<span>-</span>dom</h1>
+    <p class="tagline">Server-authoritative DOM streaming for humans and agents</p>
+    <p class="hero-desc">
+      DOM streaming is like streaming sheet music instead of an audio recording &mdash;
+      the client still has to &ldquo;perform&rdquo; the rendering locally. The stream is semantic:
+      structured ops, not pixels. Machine-readable, persistent, and multiplexable.
+    </p>
+    <p class="hero-desc" style="margin-top: 0.5em; font-size: 0.85em; color: var(--text-muted);">
+      Run headless Chrome on a server. Stream DOM operations to any number of
+      connected clients over WebSocket. Humans and AI agents share the same session.
+    </p>
+    <div class="hero-buttons">
+      <a href="https://github.com/rlyshw/remdom#quick-start" class="btn btn-primary">Get Started</a>
+      <a href="https://github.com/rlyshw/remdom" class="btn btn-secondary">View on GitHub</a>
+    </div>
+  </section>
+
+  <!-- Architecture -->
+  <section id="architecture">
+    <h2>How it <span>works</span></h2>
+    <p class="section-desc">The server owns the browser. Clients are thin input/render terminals.</p>
+
+    <div class="arch-diagram">
+      <pre>
+<span class="purple">Human A</span> (browser)                <span class="green">Server</span>                     <span class="purple">AI Agent</span> (SDK/script)
+<span class="purple">────────────────</span>                 <span class="green">──────</span>                     <span class="purple">────────────────────</span>
+
+ keyboard ──<span class="orange">InputOp</span>──►      ┌─────────────────┐      ◄──<span class="orange">InputOp</span>── navigate()
+ mouse    ──<span class="orange">InputOp</span>──►      │<span class="green">Headless Chrome</span>  │      ◄──<span class="orange">InputOp</span>── click()
+ scroll   ──<span class="orange">InputOp</span>──►      │<span class="green">Puppeteer+Stealth</span>│      ◄──<span class="orange">InputOp</span>── type()
+                            │<span class="green">MutationObserver</span> │
+ DOM ops  ◄─<span class="highlight">MutationOp</span>──    │<span class="green">WebSocket fanout</span> │    ──<span class="highlight">MutationOp</span>─► readDOM()
+                            └─────────────────┘
+
+<span class="purple">Human B</span> (phone/tablet)                                 <span class="cmt">Any WebSocket client</span>
+<span class="purple">─────────────────────</span>               │                  <span class="cmt">can connect:</span>
+                                    │                  <span class="cmt">browsers, scripts,</span>
+ Same session, synced ◄─<span class="highlight">MutationOp</span>──┘                  <span class="cmt">agents, test runners</span></pre>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features">
+    <h2>Key <span>features</span></h2>
+    <p class="section-desc">A framework for building on top of &mdash; not a finished app.</p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-label label-core">Core</div>
+        <h3>DOM Streaming, Not Pixels</h3>
+        <p>
+          Streams structured DOM operations (childList, attributes, characterData) instead of
+          pixel data. Orders of magnitude less bandwidth than VNC/RDP. Clients render natively.
+        </p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-label label-core">Core</div>
+        <h3>Headless Chrome Backend</h3>
+        <p>
+          Full browser engine via Puppeteer with stealth plugin. Real JavaScript execution,
+          real layout, real network stack. Pages behave exactly as they would in a normal browser.
+        </p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-label label-arch">Architecture</div>
+        <h3>Multi-Client Sessions</h3>
+        <p>
+          Multiple clients connect to the same browser session simultaneously.
+          Everyone sees the same page state. Mix human observers with AI agent controllers.
+        </p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-label label-protocol">Protocol</div>
+        <h3>Clean JSON Protocol</h3>
+        <p>
+          Five op types: <code>snapshot</code>, <code>childList</code>, <code>attributes</code>,
+          <code>characterData</code>, <code>property</code>. Easy to parse, easy to extend.
+        </p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-label label-core">Core</div>
+        <h3>Full Input Relay</h3>
+        <p>
+          Relay clicks, keyboard events, scroll, and navigation from any client.
+          Clients can observe passively or actively control the page.
+        </p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-label label-arch">Architecture</div>
+        <h3>Framework, Not an App</h3>
+        <p>
+          A building block. Write your own client renderers, agent loops, session managers,
+          and automation pipelines on top of the protocol.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quick Start Code -->
+  <section id="get-started">
+    <h2>Get <span>started</span></h2>
+    <p class="section-desc">Up and running in minutes.</p>
+
+    <div class="steps">
+      <div class="step">
+        <h3>Install</h3>
+        <div class="code-block">
+          <div class="code-header">terminal</div>
+          <pre>npm install remote-dom</pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <h3>Start a session</h3>
+        <p>Launch a headless browser, navigate to a page, and start streaming DOM ops.</p>
+        <div class="code-block">
+          <div class="code-header">server.js</div>
+          <pre><span class="kw">import</span> { <span class="type">RemoteDomServer</span> } <span class="kw">from</span> <span class="str">'remote-dom/server'</span>;
+
+<span class="kw">const</span> server = <span class="kw">new</span> <span class="type">RemoteDomServer</span>({ <span class="fn">port</span>: <span class="num">3000</span> });
+
+<span class="cmt">// Create a session — launches headless Chrome</span>
+<span class="kw">const</span> session = <span class="kw">await</span> server.<span class="fn">createSession</span>({
+  <span class="fn">url</span>: <span class="str">'https://example.com'</span>,
+  <span class="fn">headless</span>: <span class="kw">true</span>,
+});
+
+console.<span class="fn">log</span>(<span class="str">`Session <span class="kw">${</span>session.id<span class="kw">}</span> ready on ws://localhost:3000`</span>);</pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <h3>Connect a client</h3>
+        <p>Any WebSocket client can connect — a browser, a Node script, or an AI agent.</p>
+        <div class="code-block">
+          <div class="code-header">client.js</div>
+          <pre><span class="kw">import</span> { <span class="type">RemoteDomClient</span> } <span class="kw">from</span> <span class="str">'remote-dom/client'</span>;
+
+<span class="kw">const</span> client = <span class="kw">new</span> <span class="type">RemoteDomClient</span>(<span class="str">'ws://localhost:3000'</span>);
+
+<span class="cmt">// Receive DOM operations</span>
+client.<span class="fn">on</span>(<span class="str">'snapshot'</span>, (html) => {
+  document.getElementById(<span class="str">'app'</span>).innerHTML = html;
+});
+
+client.<span class="fn">on</span>(<span class="str">'mutation'</span>, (op) => {
+  <span class="cmt">// op.type: 'childList' | 'attributes' | 'characterData' | 'property'</span>
+  <span class="fn">applyMutation</span>(op);
+});
+
+<span class="cmt">// Send input upstream</span>
+client.<span class="fn">sendClick</span>({ <span class="fn">targetId</span>: <span class="str">'btn-submit'</span>, <span class="fn">x</span>: <span class="num">100</span>, <span class="fn">y</span>: <span class="num">200</span> });
+client.<span class="fn">sendKeypress</span>({ <span class="fn">key</span>: <span class="str">'Enter'</span>, <span class="fn">code</span>: <span class="str">'Enter'</span> });</pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <h3>Build on top</h3>
+        <p>Use the protocol to build agent loops, testing tools, collaborative browsing, or anything else.</p>
+        <div class="code-block">
+          <div class="code-header">agent.js</div>
+          <pre><span class="cmt">// AI agent example — observe DOM, decide, act</span>
+client.<span class="fn">on</span>(<span class="str">'snapshot'</span>, <span class="kw">async</span> (html) => {
+  <span class="kw">const</span> action = <span class="kw">await</span> llm.<span class="fn">decide</span>(html);
+
+  <span class="kw">if</span> (action.type === <span class="str">'click'</span>) {
+    client.<span class="fn">sendClick</span>(action.target);
+  } <span class="kw">else if</span> (action.type === <span class="str">'type'</span>) {
+    client.<span class="fn">sendInput</span>(action.target, action.text);
+  }
+});</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Protocol -->
+  <section id="protocol">
+    <h2>The <span>protocol</span></h2>
+    <p class="section-desc">Simple JSON ops over WebSocket. Easy to implement in any language.</p>
+
+    <div class="protocol-ops">
+      <div class="op-group">
+        <h3 style="color: var(--green)">Server &rarr; Client</h3>
+        <ul>
+          <li><code>snapshot</code> &mdash; full serialized DOM on connect</li>
+          <li><code>childList</code> &mdash; nodes added or removed</li>
+          <li><code>attributes</code> &mdash; attribute changed</li>
+          <li><code>characterData</code> &mdash; text content changed</li>
+          <li><code>property</code> &mdash; input value, checked, etc.</li>
+        </ul>
+      </div>
+      <div class="op-group">
+        <h3 style="color: var(--orange)">Client &rarr; Server</h3>
+        <ul>
+          <li><code>click</code> / <code>mousedown</code> / <code>mouseup</code></li>
+          <li><code>keydown</code> / <code>keyup</code> / <code>keypress</code></li>
+          <li><code>input</code> &mdash; text field value</li>
+          <li><code>scroll</code> &mdash; scroll position</li>
+          <li><code>navigate</code> &mdash; go to URL</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="container">
+    <p>remote-dom is open source under the MIT License.</p>
+    <p style="margin-top: 0.5rem;">
+      <a href="#">GitHub</a>
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

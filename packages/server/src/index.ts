@@ -10,6 +10,12 @@ export { createFanout } from "./fanout.js";
 export { createIsolate } from "./isolate-pool.js";
 export { installScriptInterceptor } from "./script-interceptor.js";
 export { createBrowserEnv } from "./browser-env.js";
+export { createPuppeteerBridge } from "./puppeteer-bridge.js";
+export { createPuppeteerSession } from "./puppeteer-session.js";
+export { createBrowserPool } from "./browser-pool.js";
+export type { PuppeteerBridge } from "./puppeteer-bridge.js";
+export type { PuppeteerSession, PuppeteerSessionOptions } from "./puppeteer-session.js";
+export type { BrowserPool, BrowserPoolOptions } from "./browser-pool.js";
 export { getClientPage } from "./client-page.js";
 export { loadFromDirectory, loadFromUrl, extractScripts } from "./content.js";
 
