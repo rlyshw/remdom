@@ -1,0 +1,40 @@
+{
+  "name": "@remdom/puppeteer",
+  "version": "0.1.0",
+  "description": "Puppeteer-backed headless Chrome integration for remdom",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": ["remdom", "puppeteer", "chrome", "headless", "dom-streaming"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rlyshw/remdom.git",
+    "directory": "packages/puppeteer"
+  },
+  "dependencies": {
+    "@remdom/dom": "workspace:*",
+    "@remdom/protocol": "workspace:*",
+    "puppeteer-core": "^24.0.0",
+    "ws": "^8.18.0"
+  },
+  "optionalDependencies": {
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.0",
+    "typescript": "^5.7.0"
+  }
+}
