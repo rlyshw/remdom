@@ -4,7 +4,7 @@
 
 Run headless Chrome on a server. Stream structured DOM ops — not pixels — to any client over WebSocket. Humans and AI agents connect to the same session.
 
-> Encodes the DOM as a structured JSON op stream over WebSocket. Headless Chrome on the server, thin clients anywhere. The wire carries semantic mutations — `childList`, `attributes`, `characterData` — that any consumer can parse, filter, record, or act on.
+> Encode the DOM as a structured op stream over WebSocket. Virtualize and stream DOM state between a headless server and thin clients. A semantic interface to the DOM so any consumer can parse, filter, record, or act on it.
 >
 > [Read more: Why encode the DOM? →](docs/PHILOSOPHY.md)
 
