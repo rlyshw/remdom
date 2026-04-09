@@ -78,7 +78,8 @@ See [`packages/protocol/src/ops.ts`](packages/protocol/src/ops.ts) for full type
 ## Docs
 
 - **[Architecture](docs/ARCHITECTURE.md)** — system design, data flow, package structure
-- **[Philosophy](docs/PHILOSOPHY.md)** — why encode the DOM, honest limitations, DOM ops vs pixel streams
+- **[Encoding the DOM](docs/PHILOSOPHY.md)** — how DOM encoding works, MutationObserver pipeline, limitations
+- **[Wire Format](docs/WIRE_FORMAT.md)** — complete protocol reference with JSON examples
 
 ## License
 

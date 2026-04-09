@@ -1,15 +1,23 @@
+/**
+ * remote-dom protocol op types.
+ *
+ * Wire format: JSON over WebSocket.
+ * Server sends MutationOps to describe DOM changes.
+ * Clients send InputOps to dispatch user actions.
+ */
+
 // ── Serialized DOM node (used in childList ops) ──
 
 export interface SerializedNode {
   id: string;
-  type: number; // Node.nodeType (1=element, 3=text, 8=comment)
-  tag?: string; // element tagName
+  type: number; // Node.nodeType: 1=element, 3=text, 8=comment
+  tag?: string;
   attrs?: Record<string, string>;
   children?: SerializedNode[];
   data?: string; // text/comment content
 }
 
-// ── Server -> Client (mutation ops) ──
+// ── Server → Client (mutation ops) ──
 
 export interface SnapshotOp {
   type: "snapshot";
@@ -58,7 +66,7 @@ export type MutationOp =
   | PropertyOp
   | NavigatedOp;
 
-// ── Client -> Server (input ops) ──
+// ── Client → Server (input ops) ──
 
 export interface MouseOp {
   type: "mousedown" | "mouseup" | "click" | "dblclick";
@@ -114,7 +122,7 @@ export type InputOp =
   | FocusOp
   | NavigateOp;
 
-// ── Union of all ops ──
+// ── Union ──
 
 export type Op = MutationOp | InputOp;
 
@@ -126,3 +134,13 @@ export const Modifiers = {
   ALT: 4,
   META: 8,
 } as const;
+
+// ── Op type guards ──
+
+export function isMutationOp(op: Op): op is MutationOp {
+  return ["snapshot", "childList", "attributes", "characterData", "property", "navigated"].includes(op.type);
+}
+
+export function isInputOp(op: Op): op is InputOp {
+  return ["mousedown", "mouseup", "click", "dblclick", "keydown", "keyup", "keypress", "input", "scroll", "resize", "focus", "blur", "navigate"].includes(op.type);
+}

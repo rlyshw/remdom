@@ -1,6 +1,8 @@
 import type { Page, KeyInput } from "puppeteer-core";
 import type { InputOp } from "@remote-dom/protocol";
 
+type SafeEvaluate = <T>(fn: string | ((...args: any[]) => T), ...args: any[]) => Promise<T | null>;
+
 const BUTTON_MAP: Record<number, "left" | "middle" | "right"> = {
   0: "left",
   1: "middle",
@@ -9,23 +11,20 @@ const BUTTON_MAP: Record<number, "left" | "middle" | "right"> = {
 
 /**
  * Resolve a data-rdid to element coordinates in the page.
- * Returns center point of the element's bounding rect.
+ * Scrolls element into view, returns center point of bounding rect.
  */
 async function resolveTarget(
   page: Page,
-  rdid: string
+  rdid: string,
+  safeEval: SafeEvaluate
 ): Promise<{ x: number; y: number } | null> {
-  const rect = await page.evaluate(
+  const rect = await safeEval(
     (id: string) => {
-      const r = (window as any).__rdm_resolveTarget(id);
-      if (r) {
-        // Scroll element into view if off-screen
-        const node = document.querySelector(`[data-rdid="${id}"]`);
-        if (node) (node as HTMLElement).scrollIntoView?.({ block: "nearest" });
-        // Re-get rect after scroll
-        return (window as any).__rdm_resolveTarget(id);
-      }
-      return r;
+      const node = document.querySelector(`[data-rdid="${id}"]`);
+      if (!node) return null;
+      (node as HTMLElement).scrollIntoView?.({ block: "nearest", inline: "nearest" });
+      const r = node.getBoundingClientRect();
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
     },
     rdid
   );
@@ -41,14 +40,19 @@ async function resolveTarget(
  */
 export async function dispatchPuppeteerInput(
   page: Page,
-  op: InputOp
+  op: InputOp,
+  safeEval?: SafeEvaluate
 ): Promise<void> {
+  const evaluate = safeEval ?? (async <T>(fn: any, ...args: any[]) => {
+    try { return await page.evaluate(fn, ...args) as T; }
+    catch { return null as T; }
+  });
+
   switch (op.type) {
     case "click":
     case "dblclick": {
-      const pos = await resolveTarget(page, op.targetId);
+      const pos = await resolveTarget(page, op.targetId, evaluate);
       if (!pos) return;
-      // Move first so hover states update, then click
       await page.mouse.move(pos.x, pos.y);
       await page.mouse.click(pos.x, pos.y, {
         button: BUTTON_MAP[op.button] ?? "left",
@@ -58,10 +62,8 @@ export async function dispatchPuppeteerInput(
     }
 
     case "mousedown":
-    case "mouseup": {
-      // Skip — click handles the full cycle
+    case "mouseup":
       break;
-    }
 
     case "keydown": {
       await page.keyboard.down(op.key as KeyInput);
@@ -79,9 +81,9 @@ export async function dispatchPuppeteerInput(
     }
 
     case "input": {
-      await page.evaluate(
+      await evaluate(
         (rdid: string, value: string) =>
-          (window as any).__rdm_setInputValue(rdid, value),
+          (window as any).__rdm_setInputValue?.(rdid, value),
         op.targetId,
         op.value
       );
@@ -89,9 +91,9 @@ export async function dispatchPuppeteerInput(
     }
 
     case "scroll": {
-      await page.evaluate(
+      await evaluate(
         (rdid: string, top: number, left: number) =>
-          (window as any).__rdm_scrollTo(rdid, top, left),
+          (window as any).__rdm_scrollTo?.(rdid, top, left),
         op.targetId,
         op.scrollTop,
         op.scrollLeft
@@ -100,16 +102,16 @@ export async function dispatchPuppeteerInput(
     }
 
     case "focus": {
-      await page.evaluate(
-        (rdid: string) => (window as any).__rdm_focusElement(rdid),
+      await evaluate(
+        (rdid: string) => (window as any).__rdm_focusElement?.(rdid),
         op.targetId
       );
       break;
     }
 
     case "blur": {
-      await page.evaluate(
-        (rdid: string) => (window as any).__rdm_blurElement(rdid),
+      await evaluate(
+        (rdid: string) => (window as any).__rdm_blurElement?.(rdid),
         op.targetId
       );
       break;
@@ -120,9 +122,7 @@ export async function dispatchPuppeteerInput(
       break;
     }
 
-    case "navigate": {
-      // Handled at the session level, not here
+    case "navigate":
       break;
-    }
   }
 }

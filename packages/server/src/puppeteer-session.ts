@@ -109,7 +109,7 @@ export async function createPuppeteerSession(
 
       // Scroll sync — relay to other clients
       if (op.type === "scroll") {
-        const msg = codec.encode(op as any);
+        const msg = codec.encode(op);
         for (const ws of subscribers) {
           if (ws !== fromWs && ws.readyState === ws.OPEN) {
             ws.send(msg);
@@ -130,10 +130,8 @@ export async function createPuppeteerSession(
     async reload(newUrl: string) {
       await bridge.navigate(newUrl);
       // Notify clients of the new URL
-      const msg = codec.encode({
-        type: "navigated",
-        url: newUrl,
-      } as any);
+      const navigatedOp: MutationOp = { type: "navigated", url: newUrl };
+      const msg = codec.encode(navigatedOp);
       for (const ws of subscribers) {
         if (ws.readyState === ws.OPEN) {
           ws.send(msg);
