@@ -381,13 +381,13 @@
     <h1>remote<span>-</span>dom</h1>
     <p class="tagline">Server-authoritative DOM streaming for humans and agents</p>
     <p class="hero-desc">
-      DOM streaming is like streaming sheet music instead of an audio recording &mdash;
-      the client still has to &ldquo;perform&rdquo; the rendering locally. The stream is semantic:
-      structured ops, not pixels. Machine-readable, persistent, and multiplexable.
+      Encode the DOM as a structured op stream over WebSocket. Headless Chrome
+      on the server, thin clients anywhere. The wire is semantic &mdash; not pixels,
+      not video &mdash; so any consumer can parse, filter, record, or act on it.
     </p>
     <p class="hero-desc" style="margin-top: 0.5em; font-size: 0.85em; color: var(--text-muted);">
-      Run headless Chrome on a server. Stream DOM operations to any number of
-      connected clients over WebSocket. Humans and AI agents share the same session.
+      Multiple clients connect to one session. Humans observe and interact.
+      Agents read the DOM and dispatch actions. Same protocol, same state.
     </p>
     <div class="hero-buttons">
       <a href="https://github.com/rlyshw/remdom#quick-start" class="btn btn-primary">Get Started</a>
