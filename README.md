@@ -4,7 +4,7 @@
 
 Run headless Chrome on a server. Stream structured DOM ops — not pixels — to any client over WebSocket. Humans and AI agents connect to the same session.
 
-> The stream is semantic: structured ops, not pixels. We know "a button was added," not "pixels changed at coordinates 340,220." This makes the DOM machine-readable, persistent, and multiplexable.
+> Encodes the DOM as a structured JSON op stream over WebSocket. Headless Chrome on the server, thin clients anywhere. The wire carries semantic mutations — `childList`, `attributes`, `characterData` — that any consumer can parse, filter, record, or act on.
 >
 > [Read more: Why encode the DOM? →](docs/PHILOSOPHY.md)
 
