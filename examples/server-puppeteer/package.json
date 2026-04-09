@@ -1,0 +1,10 @@
+{
+  "name": "@remdom-examples/server-puppeteer",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@remdom/server": "workspace:*",
+    "@remdom/puppeteer": "workspace:*"
+  }
+}
