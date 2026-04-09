@@ -13,9 +13,10 @@
       --border: #30363d;
       --text: #e6edf3;
       --text-muted: #8b949e;
-      --accent: #58a6ff;
-      --accent-dim: #1f6feb;
+      --accent: #3fb950;
+      --accent-dim: #238636;
       --green: #3fb950;
+      --blue: #58a6ff;
       --purple: #bc8cff;
       --orange: #d29922;
       --code-bg: #0d1117;
@@ -59,7 +60,7 @@
       overflow: hidden;
     }
 
-    .anim-source { color: var(--accent); }
+    .anim-source { color: var(--blue); }
     .anim-mirror { color: var(--purple); text-align: right; }
 
     .anim-label {
@@ -112,8 +113,8 @@
       0%, 100% { max-height: 0; opacity: 0; transform: translateY(-4px); }
       23% { max-height: 0; opacity: 0; transform: translateY(-4px); }
       25% { max-height: 1.65em; opacity: 1; transform: translateY(0); color: var(--green); text-shadow: 0 0 10px var(--green); }
-      30% { color: var(--accent); text-shadow: none; }
-      73% { max-height: 1.65em; opacity: 1; color: var(--accent); }
+      30% { color: var(--blue); text-shadow: none; }
+      73% { max-height: 1.65em; opacity: 1; color: var(--blue); }
       75% { max-height: 1.65em; opacity: 1; color: #f85149; text-shadow: 0 0 10px #f85149; }
       80% { max-height: 0; opacity: 0; }
     }
@@ -134,8 +135,8 @@
       0%, 100% { max-height: 0; opacity: 0; transform: translateY(-4px); }
       43% { max-height: 0; opacity: 0; transform: translateY(-4px); }
       45% { max-height: 1.65em; opacity: 1; transform: translateY(0); color: var(--green); text-shadow: 0 0 10px var(--green); }
-      50% { color: var(--accent); text-shadow: none; }
-      53% { max-height: 1.65em; opacity: 1; color: var(--accent); }
+      50% { color: var(--blue); text-shadow: none; }
+      53% { max-height: 1.65em; opacity: 1; color: var(--blue); }
       55% { max-height: 1.65em; opacity: 1; color: #f85149; text-shadow: 0 0 10px #f85149; }
       60% { max-height: 0; opacity: 0; }
     }
@@ -153,14 +154,14 @@
     /* op-remove-1: banana — removed 5%, re-added 95% */
     .tag-line.op-remove-1 { animation: removeOp1 24s ease-in-out infinite; }
     @keyframes removeOp1 {
-      0% { max-height: 1.65em; opacity: 1; color: var(--accent); }
-      3% { max-height: 1.65em; opacity: 1; color: var(--accent); }
+      0% { max-height: 1.65em; opacity: 1; color: var(--blue); }
+      3% { max-height: 1.65em; opacity: 1; color: var(--blue); }
       5% { color: #f85149; text-shadow: 0 0 10px #f85149; max-height: 1.65em; opacity: 1; }
       10% { max-height: 0; opacity: 0; }
       93% { max-height: 0; opacity: 0; }
       95% { max-height: 1.65em; opacity: 1; transform: translateY(0); color: var(--green); text-shadow: 0 0 10px var(--green); }
-      99% { color: var(--accent); text-shadow: none; }
-      100% { max-height: 1.65em; opacity: 1; color: var(--accent); }
+      99% { color: var(--blue); text-shadow: none; }
+      100% { max-height: 1.65em; opacity: 1; color: var(--blue); }
     }
     .anim-mirror .tag-line.op-remove-1 { animation: removeOp1Mirror 24s ease-in-out infinite; }
     @keyframes removeOp1Mirror {
@@ -176,14 +177,14 @@
     /* op-remove-2: cherry — removed 35%, re-added 65% */
     .tag-line.op-remove-2 { animation: removeOp2 24s ease-in-out infinite; }
     @keyframes removeOp2 {
-      0% { max-height: 1.65em; opacity: 1; color: var(--accent); }
-      33% { max-height: 1.65em; opacity: 1; color: var(--accent); }
+      0% { max-height: 1.65em; opacity: 1; color: var(--blue); }
+      33% { max-height: 1.65em; opacity: 1; color: var(--blue); }
       35% { color: #f85149; text-shadow: 0 0 10px #f85149; max-height: 1.65em; opacity: 1; }
       40% { max-height: 0; opacity: 0; }
       63% { max-height: 0; opacity: 0; }
       65% { max-height: 1.65em; opacity: 1; transform: translateY(0); color: var(--green); text-shadow: 0 0 10px var(--green); }
-      70% { color: var(--accent); text-shadow: none; }
-      100% { max-height: 1.65em; opacity: 1; color: var(--accent); }
+      70% { color: var(--blue); text-shadow: none; }
+      100% { max-height: 1.65em; opacity: 1; color: var(--blue); }
     }
     .anim-mirror .tag-line.op-remove-2 { animation: removeOp2Mirror 24s ease-in-out infinite; }
     @keyframes removeOp2Mirror {
@@ -207,13 +208,13 @@
     .tag-line.op-text .text-before { animation: textBefore 24s steps(1, end) infinite; }
     .tag-line.op-text .text-after { animation: textAfter 24s steps(1, end) infinite; font-size: 0; }
     @keyframes textOp {
-      0%, 13% { color: var(--accent); }
+      0%, 13% { color: var(--blue); }
       15% { color: var(--orange); text-shadow: 0 0 10px var(--orange); }
-      20% { color: var(--accent); text-shadow: none; }
-      83% { color: var(--accent); }
+      20% { color: var(--blue); text-shadow: none; }
+      83% { color: var(--blue); }
       85% { color: var(--orange); text-shadow: 0 0 10px var(--orange); }
-      90% { color: var(--accent); text-shadow: none; }
-      100% { color: var(--accent); }
+      90% { color: var(--blue); text-shadow: none; }
+      100% { color: var(--blue); }
     }
     @keyframes textBefore {
       0%, 15% { font-size: inherit; }
@@ -703,12 +704,11 @@
 
 <header>
   <nav>
-    <div class="logo">remdom</div>
+    <div class="logo">rem<span>dom</span></div>
     <div class="nav-links">
       <a href="#how">How it works</a>
       <a href="#demo">Demo</a>
       <a href="#packages">Packages</a>
-      <a href="https://github.com/rlyshw/remdom/blob/master/docs/PHILOSOPHY.md">Philosophy</a>
       <a href="https://github.com/rlyshw/remdom">GitHub</a>
     </div>
   </nav>
@@ -718,7 +718,7 @@
 
   <!-- Hero -->
   <section class="hero">
-    <h1>remdom</h1>
+    <h1>rem<span>dom</span></h1>
     <p class="tagline">DOM streaming framework</p>
     <p class="hero-desc">
       Encode the DOM as a structured op stream. Virtualize and stream DOM state between
