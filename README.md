@@ -1,85 +1,89 @@
-# remote-dom
+# remdom
 
-**Headless-first DOM streaming framework.**
+**DOM streaming framework.**
 
-Run headless Chrome on a server. Stream structured DOM ops — not pixels — to any client over WebSocket. Humans and AI agents connect to the same session.
+Encode the DOM as a structured op stream. Virtualize and stream DOM state between any source and any number of clients. A semantic interface to the DOM so any consumer can parse, filter, record, or act on it.
 
-> The DOM is a complex, stationary data structure — designed to live in one place and be operated on in-place. remote-dom breaks that restriction. It encodes the DOM as a transportable, streamable data type that can be operated on remotely over WebSocket.
+> The DOM is a complex, stationary data structure — designed to live in one place and be operated on in-place. remdom breaks that restriction. It encodes the DOM as a transportable, streamable data type that can be operated on remotely.
 >
 > [Read more: Encoding the DOM →](docs/PHILOSOPHY.md)
 
 ---
 
-## Quick start
+## The framework
+
+The framework is one package: **`@remdom/dom`**. It contains the DOM observation and application primitives. Pure DOM stuff. No Node, no server, no transport. Works in any browser.
+
+```typescript
+import { createObserver, DomApplier } from '@remdom/dom';
+
+// On one side: observe a DOM and emit ops
+const observer = createObserver({
+  root: document.documentElement,
+  onOps: (ops) => myTransport.send(ops),
+});
+observer.snapshot();
+
+// On the other side: receive ops and apply to a DOM
+const applier = new DomApplier(myContainer);
+myTransport.onMessage = (ops) => ops.forEach(op => applier.apply(op));
+```
+
+That's the framework. Two primitives: `createObserver` and `DomApplier`. Plus `createInputCapture` for the reverse direction (user input → ops). Everything else is optional.
+
+## Optional adapters
+
+The framework doesn't care how ops get from observer to applier — that's a transport concern. This repo includes several official adapters as separate packages:
+
+| Package | What it does |
+|---------|--------------|
+| `@remdom/protocol` | Op type definitions and JSON codec (used by everything) |
+| `@remdom/dom` | **The framework.** Observer + Applier + Input primitives |
+| `@remdom/server` | WebSocket fanout server (Node) — relays ops between sessions and connected clients |
+| `@remdom/puppeteer` | Headless Chrome backend (Node) — wraps a Puppeteer page as a DOM source |
+| `@remdom/client` | Convenience client wrapper for the WebSocket transport |
+
+You can use any subset. Pure in-page demo? Just `@remdom/dom`. Multiplayer over WebSocket? `@remdom/dom` + `@remdom/server`. Headless browser as a remote DOM? Add `@remdom/puppeteer`. P2P via WebRTC? Bring your own transport.
+
+## Examples
+
+- **`examples/mirror/`** — In-page demo. Edit a source DOM, watch ops stream to a mirror pane in real-time. No server, no transport. Open the HTML file from disk to see how the observer/applier primitives work.
+
+- **`examples/server-puppeteer/`** — Wires `@remdom/server` + `@remdom/puppeteer` into a working dev server. About 30 lines of code. Demonstrates how adapters compose.
 
 ```bash
+# Install + build everything
 git clone https://github.com/rlyshw/remdom.git
 cd remdom
 npm install -g pnpm
 pnpm install
 pnpm -r build
 
-# Start a session (headless Chrome, streams to localhost:3000)
-node packages/cli/dist/dev.js https://news.ycombinator.com
+# Run the server-puppeteer example
+node examples/server-puppeteer/index.js https://example.com
 ```
 
-Open `http://localhost:3000` in multiple browsers — they share the same session.
+Open `http://localhost:3000` — multiple clients share the same session.
 
-## Programmatic usage
+## What gets observed
 
-```typescript
-import {
-  createRemoteDomServer,
-  createBrowserPool,
-  createPuppeteerSession,
-} from '@remote-dom/server';
+| Op type | Captured by |
+|---------|-------------|
+| `childList` | MutationObserver (DOM tree changes) |
+| `attributes` | MutationObserver (attribute changes) |
+| `characterData` | MutationObserver (text content changes) |
+| `property` | Prototype setter interception (input.value, .checked, etc.) |
+| `snapshot` | Full DOM serialization (initial + periodic resync) |
+| Shadow DOM | `Element.attachShadow` interception + nested observer |
+| `document.title` | `Document.prototype.title` setter interception |
 
-const pool = await createBrowserPool({ mode: 'launch' });
-const page = await pool.acquirePage();
-
-const session = await createPuppeteerSession({
-  page,
-  url: 'https://example.com',
-  onNavigate: async (url, sess) => await sess.reload(url),
-});
-
-const server = createRemoteDomServer();
-server.addSession('default', session);
-server.listen(3000);
-```
-
-## Architecture
-
-```
-Human A (browser)                Server                     AI Agent (SDK/script)
-────────────────                 ──────                     ────────────────────
-
- keyboard ──InputOp──►      ┌─────────────────┐      ◄──InputOp── navigate()
- mouse    ──InputOp──►      │Headless Chrome  │      ◄──InputOp── click()
- scroll   ──InputOp──►      │Puppeteer+Stealth│      ◄──InputOp── type()
-                            │MutationObserver │
- DOM ops  ◄─MutationOp──    │WebSocket fanout │    ──MutationOp─► readDOM()
-                            └─────────────────┘
-
-Human B (phone/tablet)               │                  Any WebSocket client
-─────────────────────                │                  can connect:
-                                     │                  browsers, scripts,
- Same session, synced ◄─MutationOp──┘                   agents, test runners
-```
-
-## Protocol
-
-Server → Client: `snapshot` · `childList` · `attributes` · `characterData` · `property` · `navigated`
-
-Client → Server: `click` · `keydown` · `input` · `scroll` · `resize` · `focus` · `blur` · `navigate`
-
-See [`packages/protocol/src/ops.ts`](packages/protocol/src/ops.ts) for full type definitions.
+See [`packages/protocol/src/ops.ts`](packages/protocol/src/ops.ts) for full type definitions and [`docs/WIRE_FORMAT.md`](docs/WIRE_FORMAT.md) for the complete protocol.
 
 ## Docs
 
-- **[Architecture](docs/ARCHITECTURE.md)** — system design, data flow, package structure
-- **[Encoding the DOM](docs/PHILOSOPHY.md)** — how DOM encoding works, MutationObserver pipeline, limitations
+- **[Encoding the DOM](docs/PHILOSOPHY.md)** — how DOM encoding works, MutationObserver pipeline, what this enables
 - **[Wire Format](docs/WIRE_FORMAT.md)** — complete protocol reference with JSON examples
+- **[Architecture](docs/ARCHITECTURE.md)** — system design
 
 ## License
 

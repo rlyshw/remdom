@@ -1,172 +1,123 @@
-# remote-dom Architecture
+# remdom Architecture
 
 ## What this is
 
-A headless-first web session layer. Headless Chrome runs on a server. Humans and AI agents connect to the same session via protocol. Both can observe the DOM, dispatch input, and navigate. Think of it as **MCP for the web** — a shared, programmable browsing context.
+A DOM streaming framework. Encodes the DOM as a structured op stream that can be transported between any two endpoints — browser tabs, Node processes, headless browsers, p2p peers.
+
+The framework itself is one package: **`@remdom/dom`**. Everything else (transport, backends, runners) is an optional adapter built on top.
+
+## Core primitives
 
 ```
-                    ┌─────────────────────┐
-                    │   Headless Chrome    │
-                    │   (Puppeteer)        │
-                    │                     │
-                    │  Real DOM, JS, CSS  │
-                    │  Cookies, Storage   │
-                    └────────┬────────────┘
-                             │ CDP (Chrome DevTools Protocol)
-                    ┌────────┴────────────┐
-                    │   Session Server    │
-                    │   (Node.js)         │
-                    │                     │
-                    │  ┌───────────────┐  │
-                    │  │ Injected      │  │
-                    │  │ Observer      │◄─┼── MutationObserver in Chrome
-                    │  │ (DOM → Ops)   │  │   streams structured ops out
-                    │  └───────┬───────┘  │
-                    │          │          │
-                    │  ┌───────┴───────┐  │
-                    │  │ Session       │  │
-                    │  │ Manager       │  │
-                    │  │               │  │
-                    │  │ • Subscribers │  │
-                    │  │ • Input relay │  │
-                    │  │ • Navigation  │  │
-                    │  └───────┬───────┘  │
-                    │          │          │
-                    │     WebSocket       │
-                    │     Fanout          │
-                    └──────┬──────┬───────┘
-                           │      │
-              ┌────────────┘      └────────────┐
-              │                                │
-     ┌────────┴─────────┐           ┌──────────┴────────┐
-     │  Human Client    │           │  Agent Client     │
-     │  (Browser tab)   │           │  (SDK / MCP)      │
-     │                  │           │                   │
-     │  • DOM viewer    │           │  • Read DOM state │
-     │  • Input capture │           │  • Send actions   │
-     │  • URL bar       │           │  • Observe changes│
-     │  • Scroll sync   │           │  • Navigate       │
-     └──────────────────┘           └───────────────────┘
+                    ┌──────────────────────┐
+                    │   @remdom/dom         │
+                    │   (the framework)     │
+                    │                       │
+                    │  createObserver()     │   DOM → ops
+                    │  DomApplier           │   ops → DOM
+                    │  createInputCapture() │   user input → ops
+                    │  createInputDispatcher│   ops → user input
+                    │  NodeRegistry         │   stable ID management
+                    └──────────────────────┘
 ```
 
-## Core concepts
+These primitives know nothing about transport. They take callbacks. The caller decides what to do with the ops — send over WebSocket, postMessage, WebRTC, pipe to a local applier, log, whatever.
 
-### Session
-A single headless Chrome page. Has state (cookies, localStorage, scroll position, DOM). Multiple clients (human or agent) can connect to one session. The session is the unit of persistence.
+## Optional adapters
 
-### Ops (protocol)
-Structured messages between server and clients:
+```
+@remdom/dom (the framework)
+    │
+    ├─ @remdom/server     ─ WebSocket fanout, session interface
+    │   └─ @remdom/puppeteer  ─ Headless Chrome backend
+    │
+    ├─ @remdom/client     ─ Browser-side connect() helper
+    │
+    └─ (your adapters)    ─ WebRTC, postMessage, jsdom, etc.
+```
 
-**Server → Client (MutationOps):**
-- `snapshot` — full DOM HTML
-- `childList` — nodes added/removed
-- `attributes` — attribute changed
-- `characterData` — text content changed  
-- `property` — input value, checked state
-- `navigated` — URL changed
+Each adapter is a separate package that consumes the framework. None of them are required. You can:
 
-**Client → Server (InputOps):**
-- `click`, `dblclick` — mouse events (resolved by element ID)
-- `keydown`, `keyup`, `keypress` — keyboard
-- `input` — text field value change
-- `scroll` — viewport scroll position
-- `resize` — viewport dimensions
-- `focus`, `blur` — element focus
-- `navigate` — go to URL
+- Use only `@remdom/dom` — pure in-page or in-process DOM streaming
+- Add `@remdom/server` for WebSocket transport
+- Add `@remdom/puppeteer` for a headless Chrome DOM source
+- Build your own adapter for any other transport or DOM source
 
-### Injected Observer
-A script running inside Chrome that:
-- Assigns stable IDs (`data-rdid`) to all DOM nodes
-- Watches mutations via `MutationObserver`
-- Serializes changes into op format
-- Exposes helper functions for input dispatch (resolve element coordinates, set input values, manage focus)
+## How a typical adapter stack works
 
-### Client
-A thin terminal that:
-- Receives ops and applies them to a local DOM
-- Captures user input and sends it as ops
-- Does NOT run any of the target site's JavaScript
-- Receives only sanitized HTML (scripts stripped, `<base>` tag for asset resolution)
+```
+Headless Chrome (via @remdom/puppeteer)
+├── Real DOM, JS, CSS, cookies
+├── Injected observer (from @remdom/dom/injectable)
+└── Input dispatcher
+        │
+        │ Chrome DevTools Protocol
+        ▼
+Node.js process
+├── PuppeteerBridge (Chrome ↔ Node)
+├── PuppeteerSession (implements @remdom/server's Session interface)
+└── @remdom/server fanout
+        │
+        │ WebSocket (JSON ops)
+        ▼
+Clients (any WebSocket consumer)
+├── Browser tab using @remdom/dom DomApplier
+├── iOS app, Python script, AI agent, test runner...
+└── Each client receives the same op stream
+```
 
-## Package structure
+This is one stack. Other stacks are equally valid:
+
+- **In-page mirror:** observer in left iframe → applier in right iframe. No server.
+- **P2P:** observer in browser A → WebRTC data channel → applier in browser B. No server.
+- **Test runner:** observer in jsdom → in-process applier. No browser at all.
+- **Recording:** observer in any environment → file. Replay later via applier.
+
+## Op protocol (summary)
+
+```typescript
+// Server → Client (mutations)
+type MutationOp =
+  | { type: 'snapshot'; html: string; sessionId: string }
+  | { type: 'childList'; targetId: string; added: SerializedNode[]; removed: string[]; beforeId: string | null }
+  | { type: 'attributes'; targetId: string; name: string; value: string | null }
+  | { type: 'characterData'; targetId: string; data: string }
+  | { type: 'property'; targetId: string; prop: string; value: any }
+  | { type: 'navigated'; url: string }
+
+// Client → Server (input)
+type InputOp =
+  | { type: 'click'/'dblclick'/'mousedown'/'mouseup'; targetId: string; x: number; y: number; button: number }
+  | { type: 'keydown'/'keyup'/'keypress'; targetId: string; key: string; code: string; modifiers: number }
+  | { type: 'input'; targetId: string; value: string }
+  | { type: 'scroll'; targetId: string; scrollTop: number; scrollLeft: number }
+  | { type: 'resize'; width: number; height: number }
+  | { type: 'focus'/'blur'; targetId: string }
+  | { type: 'navigate'; url: string }
+```
+
+See [`packages/protocol/src/ops.ts`](../packages/protocol/src/ops.ts) for full type definitions and [`docs/WIRE_FORMAT.md`](./WIRE_FORMAT.md) for JSON examples.
+
+## Package layout
 
 ```
 packages/
-├── protocol/          # Op types + codec (pure, no dependencies)
-│   ├── ops.ts         # MutationOp, InputOp type definitions
-│   └── codec.ts       # JSON/msgpack encode/decode, Codec interface
-│
-├── server/            # Session management + Chrome integration
-│   ├── puppeteer-bridge.ts      # Chrome ↔ Node bridge (CDP)
-│   ├── puppeteer-injected.ts    # Script injected into Chrome pages
-│   ├── puppeteer-input.ts       # InputOp → Puppeteer API mapping
-│   ├── puppeteer-session.ts     # Session backed by Chrome page
-│   ├── browser-pool.ts          # Chrome lifecycle (launch/connect)
-│   ├── session.ts               # Session backed by linkedom (lightweight)
-│   ├── dom-bridge.ts            # linkedom DOM instrumentation
-│   ├── fanout.ts                # WebSocket server, routes to sessions
-│   ├── client-page.ts           # Human client HTML (URL bar, etc.)
-│   ├── content.ts               # URL/file content loading
-│   ├── index.ts                 # Public API + createRemoteDomServer
-│   ├── input-handler.ts         # InputOp dispatch for linkedom
-│   ├── browser-env.ts           # Browser polyfills for linkedom
-│   ├── script-interceptor.ts    # Dynamic script loading for linkedom
-│   └── isolate-pool.ts          # V8 isolate placeholder
-│
-├── client/            # Browser-side thin client library
-│   ├── dom-applier.ts           # Apply MutationOps to local DOM
-│   ├── input-capture.ts         # Capture user input → InputOps
-│   ├── optimistic.ts            # Optimistic input prediction
-│   └── index.ts                 # connect() entry point
-│
-└── cli/               # Dev server + tooling
-    └── dev.ts                   # CLI: --puppeteer flag, URL bar, bookmarks
+├── protocol/       # Op types + JSON codec (pure types)
+├── dom/            # The framework — observer/applier/input primitives
+├── server/         # WebSocket fanout adapter (optional)
+├── puppeteer/      # Headless Chrome adapter (optional)
+└── client/         # Browser client convenience wrapper (optional)
+
+examples/
+├── mirror/             # In-page demo of observer + applier (no transport)
+└── server-puppeteer/   # Full stack: server fanout + puppeteer backend
 ```
 
-## Two backends
+## What's NOT in the framework
 
-### Puppeteer (primary, full fidelity)
-Real Chrome. Every website works. ~100MB per page. Mutations stream via injected MutationObserver + `page.exposeFunction()`. Input dispatched via `page.mouse`/`page.keyboard`. Stealth plugin for bot detection bypass.
+- A runner / CLI — write a Node script (see `examples/server-puppeteer/`)
+- A "default" backend — bring your own DOM source
+- A "default" transport — bring your own (WebSocket, WebRTC, postMessage, etc.)
+- Auth, sessions, multi-user management — that's a service layer concern, not framework
 
-### Linkedom (lightweight, API-oriented)
-Fake DOM in Node. Fast, ~5MB per session. Good for: HTML scraping, simple interactions, API-driven browsing, testing. Bad for: SPAs, complex JS, anything needing real rendering.
-
-## What's NOT in scope
-
-- Pixel streaming (video, canvas, WebGL)
-- Shadow DOM traversal (Web Components internals)
-- Service Workers / Push notifications
-- File uploads/downloads
-- Browser extension compatibility
-- Multi-tab within one session (one page per session)
-
-## Data flow example: user clicks a link
-
-```
-1. Human clicks <a href="/about"> in their browser
-2. Client-page JS intercepts click (capture phase)
-3. preventDefault() stops browser navigation
-4. Sends InputOp { type: "navigate", url: "/about" }
-5. Server receives via WebSocket
-6. Session calls bridge.navigate("https://example.com/about")
-7. Puppeteer calls page.goto(url)
-8. Chrome navigates, loads page, runs JS
-9. Injected observer detects DOM changes
-10. MutationObserver fires, serializes to MutationOps
-11. Ops sent to Node via __rdm_sendOps (exposed function)
-12. Session sanitizes HTML (strip scripts, add <base>)
-13. Broadcasts to all connected clients
-14. Human client applies ops → sees new page
-15. Agent client receives same ops → can read/act on new DOM
-```
-
-## Future: Agent integration
-
-The session server already speaks a structured protocol (ops over WebSocket). An agent client would:
-
-1. Connect via WebSocket (same as human client)
-2. Receive MutationOps to understand page state
-3. Send InputOps to interact (click, type, navigate)
-4. Use higher-level commands (find element by text, wait for selector, extract data)
-
-This is essentially what MCP tools like `browser_use` do, but with a shared session that a human can observe and intervene in. The agent browses, the human watches. Or vice versa.
+The framework is intentionally small. It encodes the DOM. That's it.
