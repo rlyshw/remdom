@@ -1,8 +1,8 @@
 # remdom
 
-**DOM streaming framework.**
+**Stream the entire DOM as structured mutation ops.**
 
-Encode the DOM as a structured op stream. Virtualize and stream DOM state between any source and any number of clients. A semantic interface to the DOM so any consumer can parse, filter, record, or act on it.
+Observe every mutation to a live document — anywhere in the tree — and encode it as a structured op stream. Not a subtree, not a virtual DOM: the real browser DOM, from `<html>` down. Virtualize and stream it between any source and any number of clients.
 
 > The DOM is a complex, stationary data structure — designed to live in one place and be operated on in-place. remdom breaks that restriction. It encodes the DOM as a transportable, streamable data type that can be operated on remotely.
 >
@@ -12,7 +12,9 @@ Encode the DOM as a structured op stream. Virtualize and stream DOM state betwee
 
 ## How it works
 
-`@remdom/dom` provides two primitives. **Observer** wraps a `MutationObserver` on any DOM node, assigns stable IDs, and emits structured ops describing every change. **Applier** takes those ops and applies them to another DOM node, reconstructing the source state.
+`@remdom/dom` provides two primitives. **Observer** attaches a `MutationObserver` to the document root, assigns stable IDs to every node, and emits a structured op for every mutation anywhere in the tree — added elements, removed elements, attribute changes, text content changes, input state, shadow DOM, document title. **Applier** takes those ops and applies them to another DOM, reconstructing the full source document.
+
+This is whole-document streaming. The observer watches the entire DOM, not a subtree or a virtual DOM. Every change to every node becomes an op on the wire.
 
 ```typescript
 import { createObserver, DomApplier } from '@remdom/dom';

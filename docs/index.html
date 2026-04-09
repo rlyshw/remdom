@@ -721,11 +721,12 @@
   <!-- Hero -->
   <section class="hero">
     <h1>rem<span>dom</span></h1>
-    <p class="tagline">DOM streaming framework</p>
+    <p class="tagline">Stream the entire DOM as structured mutation ops</p>
     <p class="hero-desc">
-      Encode the DOM as a structured op stream. Virtualize and stream DOM state between
-      any source and any number of clients. A semantic interface to the DOM so any
-      consumer can parse, filter, record, or act on it.
+      Observe every mutation to a live document — anywhere in the tree — and
+      encode it as a structured op stream. Not a subtree, not a framework virtual
+      DOM: the real browser DOM, from <code>&lt;html&gt;</code> down. Virtualize and
+      stream it between any source and any number of clients.
     </p>
 
     <div class="hero-anim" aria-hidden="true">
@@ -779,10 +780,16 @@
   <section id="how">
     <h2>How it <span>works</span></h2>
     <p class="section-desc">
-      <code>@remdom/dom</code> provides two primitives. <strong>Observer</strong> wraps a
-      <code>MutationObserver</code> on any DOM node, assigns stable IDs, and emits structured
-      ops describing every change. <strong>Applier</strong> takes those ops and applies them
-      to another DOM node, reconstructing the source state.
+      <code>@remdom/dom</code> provides two primitives. <strong>Observer</strong> attaches a
+      <code>MutationObserver</code> to the document root, assigns stable IDs to every node, and
+      emits a structured op for every mutation anywhere in the tree — added elements, removed
+      elements, attribute changes, text content changes, input state, shadow DOM, document title.
+      <strong>Applier</strong> takes those ops and applies them to another DOM, reconstructing
+      the full source document.
+    </p>
+    <p class="section-desc">
+      This is whole-document streaming. The observer watches the entire DOM, not a subtree or
+      a virtual DOM. Every change to every node becomes an op on the wire.
     </p>
 
     <div class="code-block">
