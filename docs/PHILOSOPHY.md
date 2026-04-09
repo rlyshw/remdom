@@ -1,73 +1,111 @@
-# Why encode the DOM?
+# Encoding the DOM
 
-The DOM is the most important data structure in computing. Billions of people interact with DOMs daily. And it's completely local, ephemeral, and opaque. When you close the tab, it's gone. No one else can see it. No program can observe it in real-time unless it's running inside that same tab.
+## The encoding
 
-remote-dom makes the DOM a shared, network-transparent data structure.
+remote-dom encodes DOM state as a stream of structured operations. A headless Chrome instance holds the authoritative DOM. An injected `MutationObserver` watches the entire document tree and serializes every change into typed JSON ops:
 
-## What this changes
+```
+{ type: "childList",     targetId: "a1b2c3", added: [...], removed: [...], beforeId: "d4e5f6" }
+{ type: "attributes",    targetId: "a1b2c3", name: "class", value: "active" }
+{ type: "characterData", targetId: "x7y8z9", data: "Updated text" }
+{ type: "snapshot",      html: "<html data-rdid=\"...\">...</html>", sessionId: "..." }
+```
 
-**The DOM becomes an API.** Today, to interact with a website programmatically, you either scrape it (lossy, brittle) or use their API (if one exists). With an encoded DOM stream, the website's rendered state IS the API. Any program that can read JSON can read the DOM.
+Every DOM node gets a stable identifier (`data-rdid`) assigned server-side. These IDs persist across mutations so clients can target specific nodes for updates without re-traversing the tree.
 
-**The DOM becomes persistent.** You can serialize, store, replay, diff. A browsing session becomes a log of structured operations. You can rewind to any point. You can diff two sessions. You can branch.
+The initial connection sends a full `snapshot` — the complete serialized HTML with all `data-rdid` attributes in place. Subsequent changes stream as granular ops: a node added here, an attribute changed there, text content updated. The client applies these ops to its local DOM copy incrementally.
 
-**The DOM becomes multi-tenant.** Multiple consumers read the same DOM state without interfering. Today, if two scripts try to manipulate the same page, they fight. With a server-authoritative DOM, there's one source of truth and N observers.
+## How nodes are tracked
 
-## Sheet music, not audio
+On the server, the injected script maintains two maps:
 
-DOM streaming is like streaming sheet music instead of an audio recording — the client still has to "perform" the rendering locally.
+- `WeakMap<Node, string>` — node reference to rdid (for serializing mutations)
+- `Map<string, Node>` — rdid to node reference (for input dispatch)
 
-This is both the limitation and the advantage:
+Element nodes carry their ID as a `data-rdid` attribute. Text and comment nodes (which can't have attributes) are tracked in-memory only, with their IDs included in the serialized `SerializedNode` payload:
 
-**Limitation:** We stream structure and content, not the full rendering experience. CSS layout is computed locally. Canvas pixels aren't captured. The client must be capable of rendering HTML/CSS.
+```typescript
+interface SerializedNode {
+  id: string;        // stable rdid
+  type: number;      // 1=element, 3=text, 8=comment
+  tag?: string;      // "div", "span", etc (elements only)
+  attrs?: Record<string, string>;
+  children?: SerializedNode[];
+  data?: string;     // text content (text/comment nodes only)
+}
+```
 
-**Advantage:** The stream is semantic. We know "a button was added," not "pixels changed at coordinates 340,220." The client renders natively — crisp text, native scrolling, accessibility works, responsive layout adapts to the device. And the data on the wire is 100x smaller than video.
+## The MutationObserver pipeline
+
+Chrome's `MutationObserver` fires with batches of `MutationRecord` objects. The injected script maps these 1:1 to remote-dom ops:
+
+| MutationRecord type | remote-dom op | Data captured |
+|---|---|---|
+| `childList` | `ChildListOp` | Added nodes (fully serialized), removed node IDs, insertion point |
+| `attributes` | `AttributesOp` | Target ID, attribute name, new value (or null if removed) |
+| `characterData` | `CharacterDataOp` | Target ID, new text content |
+
+Ops are batched per `requestAnimationFrame` to avoid flooding the CDP channel during heavy DOM reconciliation (e.g., React re-renders). A single frame of React updates might produce dozens of `MutationRecord`s — these get serialized into a batch of ops and sent as one WebSocket message.
+
+## Input dispatch
+
+Input flows the opposite direction. Clients send `InputOp` messages identifying a target node by its `data-rdid`:
+
+```
+{ type: "click", targetId: "a1b2c3", x: 340, y: 220, button: 0 }
+```
+
+The server resolves the rdid to a live DOM node in Chrome, calls `getBoundingClientRect()` to find its viewport coordinates, scrolls it into view if needed, then dispatches the event via Puppeteer's CDP bindings (`page.mouse.click()`, `page.keyboard.press()`, etc.).
+
+The client doesn't need to know Chrome's viewport dimensions or scroll state. It says "click node a1b2c3" and the server handles coordinate resolution.
+
+## What gets stripped
+
+Before a snapshot reaches the client, the server sanitizes it:
+
+- `<script>` tags removed — Chrome already executed them; the client must not re-execute
+- `<link rel="preload" as="script">` and `<link rel="modulepreload">` removed
+- `<meta http-equiv="refresh">` removed — prevents client-side redirects
+- `target="_blank"` removed from links — prevents new tab navigation in the client
+- `<base href="...">` injected — rewrites relative CSS/image URLs to resolve against the original domain
+
+The client receives a clean, static DOM that it renders natively with its own CSS engine. JavaScript execution happens only on the server.
+
+## What this enables
+
+The encoded DOM stream is a semantic wire. Unlike pixel streams, it can be consumed programmatically:
+
+- **Parse:** extract all links, prices, form fields from the live page
+- **Filter:** subscribe only to mutations within a specific subtree
+- **Record:** log every DOM change as a structured audit trail
+- **Replay:** reconstruct exact page state at any point in time
+- **Branch:** fork a session and explore different interaction paths
+- **Middleware:** insert processing between server and client — inject elements, modify content, translate
+
+An agent reading DOM ops knows every element, attribute, and text node on the page. An agent reading pixel streams needs computer vision.
 
 ## DOM ops vs pixel streams
 
-| | DOM streaming | Pixel streaming (VNC, Mighty, etc.) |
+|  | DOM ops | Pixel streams |
 |---|---|---|
-| Bandwidth | Low (JSON ops, KB/s) | High (video frames, MB/s) |
-| Latency | Low (small ops, instant apply) | Higher (encode/decode video) |
-| Text rendering | Native, crisp | Compressed, blurry at low bitrate |
-| Scrolling | Native, smooth | Re-encoded on every frame |
-| Accessibility | Works (real DOM) | Broken (just pixels) |
-| Responsive | Client viewport controls layout | Fixed to server viewport |
-| Machine-readable | Yes (structured ops) | No (need OCR) |
+| Wire format | JSON (~KB/s) | Video frames (~MB/s) |
+| Client rendering | Native CSS engine | Decoded video |
+| Text quality | Native, resolution-independent | Compressed, resolution-dependent |
+| Scrolling | Native, smooth | Re-encoded per frame |
+| Machine-readable | Yes — structured, typed | No — need OCR |
+| Accessibility | Real DOM, screen readers work | Opaque pixels |
+| Responsive layout | Client viewport controls CSS | Fixed to server viewport |
 | Canvas/WebGL | Not captured | Captured |
-| Complex CSS effects | Some lost in translation | Fully captured |
 | Shadow DOM | Not observed | Captured as pixels |
+| Complex CSS effects | Some artifacts | Fully captured |
 
-## The middleware insight
+## Boundaries
 
-The encoded DOM stream creates something that doesn't exist today: **middleware for web browsing.**
+The DOM was designed to be local. Encoding it for the network has real boundaries:
 
-You can't put a proxy between a user and their DOM that understands what's happening semantically. With DOM ops, you can:
+- **CSS layout is local.** `getComputedStyle`, `offsetWidth`, `getBoundingClientRect` are computed by the client's rendering engine relative to its viewport. The server can query these in Chrome's viewport, but they won't match the client's layout if viewports differ.
+- **Shadow DOM is encapsulated.** `MutationObserver` on the document root cannot see into shadow trees. Web Components (GitHub's UI, YouTube's player) render internally in shadow DOM that never appears in the op stream.
+- **Canvas is pixels.** `<canvas>`, WebGL, and video elements produce pixel content that has no DOM representation. The canvas element exists in the DOM but its rendered content does not.
+- **JavaScript closures are local.** Event handlers, React state, framework internals — these exist in Chrome's JS heap and cannot be serialized. The client gets the DOM output, not the application state.
 
-- **Parse:** "What links are on this page?"
-- **Filter:** "Only show me mutations to the cart div."
-- **Modify:** "Inject a price comparison widget into every product page."
-- **Record:** "Log every DOM change as a structured audit trail."
-- **Branch:** "Fork this session — let two people explore different paths."
-- **Replay:** "Show me exactly what the page looked like at 2:43 PM."
-
-This is why DOM streaming matters for AI agents specifically. An agent that receives pixel streams needs computer vision to understand a page. An agent that receives DOM ops can simply read the HTML — it already knows every element, every attribute, every text node.
-
-## Honest limitations
-
-The DOM was designed to be local. By lifting it to the server, we break assumptions the entire web stack is built on:
-
-- CSS layout depends on local viewport dimensions
-- JavaScript assumes single-threaded local DOM access
-- Events assume a single input source
-- Canvas, WebGL, and video are pixel-based by nature
-- Shadow DOM creates encapsulated subtrees the observer can't see into
-- JavaScript closures hold references to local DOM nodes that can't be serialized
-
-These aren't bugs to fix — they're fundamental to the web's architecture. DOM streaming works best for content-driven pages (text, forms, navigation) and degrades for pixel-driven experiences (games, video, complex visualizations). The right answer for those is pixel streaming, or a hybrid approach.
-
-## Who this is for
-
-- **Agent builders** who need programmatic web interaction with human observability
-- **Tool builders** who want to put intelligence between users and websites
-- **Automation engineers** who want structured access to live web state
-- **Anyone building on the web** who's thought "I wish I could just read/write the DOM from anywhere"
+DOM streaming captures structure. Pixel streaming captures everything. The right tool depends on the use case.

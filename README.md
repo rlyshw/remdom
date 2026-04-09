@@ -6,7 +6,7 @@ Run headless Chrome on a server. Stream structured DOM ops — not pixels — to
 
 > Encode the DOM as a structured op stream over WebSocket. Virtualize and stream DOM state between a headless server and thin clients. A semantic interface to the DOM so any consumer can parse, filter, record, or act on it.
 >
-> [Read more: Why encode the DOM? →](docs/PHILOSOPHY.md)
+> [Read more: Encoding the DOM →](docs/PHILOSOPHY.md)
 
 ---
 
