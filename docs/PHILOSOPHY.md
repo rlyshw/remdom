@@ -1,8 +1,12 @@
 # Encoding the DOM
 
+The DOM is a complex, stationary data structure. It was designed to exist in one place — a browser tab — and be operated on in-place by JavaScript running in that same context. It is not transportable, not streamable, not observable from the outside.
+
+remote-dom changes that. It encodes the DOM as a transportable, streamable data type — a sequence of structured operations that can be transmitted, applied, recorded, and acted on remotely.
+
 ## The encoding
 
-remote-dom encodes DOM state as a stream of structured operations. A headless Chrome instance holds the authoritative DOM. An injected `MutationObserver` watches the entire document tree and serializes every change into typed JSON ops:
+A headless Chrome instance holds the authoritative DOM. An injected `MutationObserver` watches the entire document tree and serializes every change into typed JSON ops:
 
 ```
 { type: "childList",     targetId: "a1b2c3", added: [...], removed: [...], beforeId: "d4e5f6" }

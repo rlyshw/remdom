@@ -4,7 +4,7 @@
 
 Run headless Chrome on a server. Stream structured DOM ops — not pixels — to any client over WebSocket. Humans and AI agents connect to the same session.
 
-> Encode the DOM as a structured op stream over WebSocket. Virtualize and stream DOM state between a headless server and thin clients. A semantic interface to the DOM so any consumer can parse, filter, record, or act on it.
+> The DOM is a complex, stationary data structure — designed to live in one place and be operated on in-place. remote-dom breaks that restriction. It encodes the DOM as a transportable, streamable data type that can be operated on remotely over WebSocket.
 >
 > [Read more: Encoding the DOM →](docs/PHILOSOPHY.md)
 
