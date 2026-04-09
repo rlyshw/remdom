@@ -1,4 +1,4 @@
-import type { PropertyOp, MutationOp } from "@remote-dom/protocol";
+import type { PropertyOp, MutationOp } from "@remdom/protocol";
 
 /**
  * Optimistic input manager.

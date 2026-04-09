@@ -1,7 +1,7 @@
 {
-  "name": "@remote-dom/server",
+  "name": "@remdom/server",
   "version": "0.1.0",
-  "description": "DOM streaming server — headless Chrome sessions over WebSocket",
+  "description": "WebSocket server primitives for remdom sessions",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -16,7 +16,7 @@
     "build": "tsc",
     "prepublishOnly": "npm run build"
   },
-  "keywords": ["dom", "streaming", "puppeteer", "headless", "chrome", "websocket", "remote"],
+  "keywords": ["remdom", "dom", "streaming", "websocket", "server"],
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -24,22 +24,8 @@
     "directory": "packages/server"
   },
   "dependencies": {
-    "@remote-dom/protocol": "workspace:*",
-    "linkedom": "^0.18.0",
-    "puppeteer-core": "^24.0.0",
+    "@remdom/protocol": "workspace:*",
     "ws": "^8.18.0"
-  },
-  "optionalDependencies": {
-    "puppeteer-extra": "^3.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2"
-  },
-  "peerDependencies": {
-    "puppeteer-core": ">=22.0.0"
-  },
-  "peerDependenciesMeta": {
-    "puppeteer-core": {
-      "optional": false
-    }
   },
   "devDependencies": {
     "@types/ws": "^8.5.0",

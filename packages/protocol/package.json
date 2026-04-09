@@ -1,5 +1,5 @@
 {
-  "name": "@remote-dom/protocol",
+  "name": "@remdom/protocol",
   "version": "0.1.0",
   "description": "Op types and codec for the remote-dom DOM streaming protocol",
   "type": "module",

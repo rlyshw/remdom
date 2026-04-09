@@ -1,5 +1,5 @@
 {
-  "name": "@remote-dom/client",
+  "name": "@remdom/client",
   "version": "0.1.0",
   "description": "Browser-side client for remote-dom DOM streaming",
   "type": "module",
@@ -24,7 +24,8 @@
     "directory": "packages/client"
   },
   "dependencies": {
-    "@remote-dom/protocol": "workspace:*"
+    "@remdom/dom": "workspace:*",
+    "@remdom/protocol": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0"
