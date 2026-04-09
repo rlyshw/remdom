@@ -1,0 +1,36 @@
+{
+  "name": "@remdom/dom",
+  "version": "0.1.0",
+  "description": "Transport-agnostic DOM observer, applier, and input primitives",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./injectable": {
+      "import": "./dist/injectable.js",
+      "types": "./dist/injectable.d.ts"
+    }
+  },
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": ["dom", "streaming", "observer", "mutations", "protocol", "p2p", "transport-agnostic"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rlyshw/remdom.git",
+    "directory": "packages/dom"
+  },
+  "dependencies": {
+    "@remdom/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}
