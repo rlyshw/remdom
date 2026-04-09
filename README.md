@@ -10,60 +10,58 @@ Encode the DOM as a structured op stream. Virtualize and stream DOM state betwee
 
 ---
 
-## The framework
+## How it works
 
-The framework is one package: **`@remdom/dom`**. It contains the DOM observation and application primitives. Pure DOM stuff. No Node, no server, no transport. Works in any browser.
+`@remdom/dom` provides two primitives. **Observer** wraps a `MutationObserver` on any DOM node, assigns stable IDs, and emits structured ops describing every change. **Applier** takes those ops and applies them to another DOM node, reconstructing the source state.
 
 ```typescript
 import { createObserver, DomApplier } from '@remdom/dom';
 
-// On one side: observe a DOM and emit ops
+// Source side — observe a DOM, emit ops via callback
 const observer = createObserver({
   root: document.documentElement,
-  onOps: (ops) => myTransport.send(ops),
+  onOps: (ops) => transport.send(ops),
 });
 observer.snapshot();
 
-// On the other side: receive ops and apply to a DOM
-const applier = new DomApplier(myContainer);
-myTransport.onMessage = (ops) => ops.forEach(op => applier.apply(op));
+// Receiver side — apply incoming ops to a target DOM
+const applier = new DomApplier(targetContainer);
+transport.onMessage = (ops) => ops.forEach(op => applier.apply(op));
 ```
 
-That's the framework. Two primitives: `createObserver` and `DomApplier`. Plus `createInputCapture` for the reverse direction (user input → ops). Everything else is optional.
+`createInputCapture` does the reverse — capture user input events from a DOM and emit `InputOp`s for the source side to dispatch. Together they give you bidirectional DOM sync.
 
-## Optional adapters
+The framework is transport-agnostic. The `transport` in the example above is whatever you want: WebSocket, WebRTC, postMessage, an in-process function call, a file. Bring your own.
 
-The framework doesn't care how ops get from observer to applier — that's a transport concern. This repo includes several official adapters as separate packages:
+**[Try the live mirror demo →](https://rlyshw.github.io/remdom/mirror.html)** — observer and applier running side-by-side in one page.
 
-| Package | What it does |
-|---------|--------------|
-| `@remdom/protocol` | Op type definitions and JSON codec (used by everything) |
-| `@remdom/dom` | **The framework.** Observer + Applier + Input primitives |
-| `@remdom/server` | WebSocket fanout server (Node) — relays ops between sessions and connected clients |
-| `@remdom/puppeteer` | Headless Chrome backend (Node) — wraps a Puppeteer page as a DOM source |
-| `@remdom/client` | Convenience client wrapper for the WebSocket transport |
+## Packages
 
-You can use any subset. Pure in-page demo? Just `@remdom/dom`. Multiplayer over WebSocket? `@remdom/dom` + `@remdom/server`. Headless browser as a remote DOM? Add `@remdom/puppeteer`. P2P via WebRTC? Bring your own transport.
+| Package | Purpose |
+|---------|---------|
+| `@remdom/protocol` | Op type definitions and JSON codec |
+| `@remdom/dom` | Observer, Applier, Input primitives — the framework |
+| `@remdom/server` | WebSocket fanout server (Node) |
+| `@remdom/puppeteer` | Headless Chrome DOM source (Node) |
+| `@remdom/client` | Browser-side WebSocket client wrapper |
+
+`protocol` and `dom` are the framework. The others are adapters for specific transports and DOM sources. Use any subset that fits your stack.
 
 ## Examples
 
-- **`examples/mirror/`** — In-page demo. Edit a source DOM, watch ops stream to a mirror pane in real-time. No server, no transport. Open the HTML file from disk to see how the observer/applier primitives work.
+- **[`examples/mirror/`](examples/mirror/)** — Observer and applier in a single page. Edit the source DOM, watch ops stream to the mirror in real-time. Open the HTML file from disk, no install required. Also live at [rlyshw.github.io/remdom/mirror.html](https://rlyshw.github.io/remdom/mirror.html).
 
-- **`examples/server-puppeteer/`** — Wires `@remdom/server` + `@remdom/puppeteer` into a working dev server. About 30 lines of code. Demonstrates how adapters compose.
+- **[`examples/server-puppeteer/`](examples/server-puppeteer/)** — Node script wiring `@remdom/server` + `@remdom/puppeteer` into a dev server. Run it, open multiple browser tabs, all clients share the same session.
 
 ```bash
-# Install + build everything
 git clone https://github.com/rlyshw/remdom.git
 cd remdom
 npm install -g pnpm
 pnpm install
 pnpm -r build
 
-# Run the server-puppeteer example
 node examples/server-puppeteer/index.js https://example.com
 ```
-
-Open `http://localhost:3000` — multiple clients share the same session.
 
 ## What gets observed
 

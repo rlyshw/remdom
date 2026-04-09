@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>remdom mirror</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #0d1117; color: #e6edf3; height: 100vh; display: flex; flex-direction: column; }
+
+    header {
+      padding: 10px 16px; background: #161b22; border-bottom: 1px solid #30363d;
+      display: flex; align-items: center; gap: 12px;
+    }
+    header h1 { font-size: 15px; font-weight: 600; }
+    header h1 span { color: #58a6ff; }
+    header p { font-size: 12px; color: #8b949e; }
+
+    .toolbar {
+      padding: 6px 12px; background: #1c2128; border-bottom: 1px solid #30363d;
+      display: flex; gap: 4px; align-items: center; flex-wrap: wrap;
+    }
+    .toolbar button {
+      padding: 4px 10px; border-radius: 4px; border: 1px solid #30363d;
+      background: #21262d; color: #c9d1d9; font-size: 12px; cursor: pointer;
+    }
+    .toolbar button:hover { background: #30363d; }
+    .toolbar button.danger { border-color: #f85149; color: #f85149; }
+    .toolbar button.danger:hover { background: #3d1214; }
+    .toolbar .spacer { flex: 1; }
+    .toolbar .stat { font-size: 11px; color: #8b949e; font-family: monospace; }
+    .toolbar .stat em { color: #58a6ff; font-style: normal; }
+
+    .main { display: flex; flex: 1; overflow: hidden; }
+    .pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .pane + .pane { border-left: 1px solid #30363d; }
+
+    .pane-label {
+      padding: 5px 12px; background: #161b22; border-bottom: 1px solid #30363d;
+      font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+
+    .pane-body { flex: 1; padding: 12px; overflow: auto; }
+
+    /* App styles applied to both source and mirror */
+    .todo-input { display: flex; gap: 8px; margin-bottom: 12px; }
+    .todo-input input {
+      flex: 1; padding: 8px 12px; border-radius: 6px; border: 1px solid #30363d;
+      background: #0d1117; color: #e6edf3; font-size: 14px; outline: none;
+    }
+    .todo-input input:focus { border-color: #58a6ff; }
+    .todo-input button {
+      padding: 8px 16px; border-radius: 6px; border: none;
+      background: #238636; color: white; font-size: 14px; cursor: pointer;
+    }
+    .todo-item {
+      padding: 8px 12px; margin: 4px 0; border-radius: 6px; background: #161b22;
+      border: 1px solid #30363d; display: flex; align-items: center; gap: 10px;
+      font-size: 14px; cursor: pointer; user-select: none;
+    }
+    .todo-item:hover { border-color: #484f58; }
+    .todo-item.done { opacity: 0.5; text-decoration: line-through; }
+    .todo-item .check { width: 18px; height: 18px; border-radius: 4px; border: 2px solid #484f58; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .todo-item.done .check { border-color: #3fb950; background: #238636; }
+    .todo-item.done .check::after { content: "✓"; color: white; font-size: 12px; }
+    .todo-item .text { flex: 1; }
+    .todo-item .del { color: #484f58; cursor: pointer; font-size: 16px; padding: 0 4px; }
+    .todo-item .del:hover { color: #f85149; }
+    .counter-row { display: flex; gap: 8px; align-items: center; margin-top: 16px; padding-top: 12px; border-top: 1px solid #30363d; }
+    .counter-row button {
+      padding: 6px 14px; border-radius: 6px; border: 1px solid #30363d;
+      background: #21262d; color: #c9d1d9; font-size: 16px; cursor: pointer;
+    }
+    .counter-row button:hover { background: #30363d; }
+    .counter-val { font-size: 24px; font-weight: bold; min-width: 40px; text-align: center; color: #58a6ff; }
+
+    #ops-pane {
+      border-top: 1px solid #30363d; max-height: 160px; overflow: auto;
+      font-family: monospace; font-size: 11px; background: #0d1117;
+    }
+    .op-row { padding: 2px 12px; border-bottom: 1px solid #161b22; display: flex; gap: 8px; white-space: nowrap; }
+    .op-row:hover { background: #161b22; }
+    .op-n { color: #484f58; min-width: 28px; text-align: right; }
+    .op-t { font-weight: bold; min-width: 90px; }
+    .t-childList { color: #3fb950; }
+    .t-attributes { color: #bc8cff; }
+    .t-characterData { color: #58a6ff; }
+    .t-snapshot { color: #f0883e; }
+    .op-d { color: #8b949e; overflow: hidden; text-overflow: ellipsis; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>remote<span>-</span>dom <span>mirror</span></h1>
+    <p>Interact with the source. DOM mutations stream as ops to the mirror in real-time.</p>
+  </header>
+
+  <div class="toolbar">
+    <button onclick="clearAll()" class="danger">Reset</button>
+    <div class="spacer"></div>
+    <div class="stat">ops: <em id="op-count">0</em></div>
+  </div>
+
+  <div class="main">
+    <div class="pane">
+      <div class="pane-label"><div class="dot" style="background:#3fb950"></div> Source</div>
+      <div class="pane-body">
+        <div id="source"></div>
+      </div>
+    </div>
+    <div class="pane">
+      <div class="pane-label"><div class="dot" style="background:#58a6ff"></div> Mirror (from ops)</div>
+      <div class="pane-body">
+        <div id="mirror-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="ops-pane"></div>
+
+  <script>
+    var RDID = "data-rdid";
+    var source = document.getElementById("source");
+    var mirrorBody = document.getElementById("mirror-body");
+    var opsPane = document.getElementById("ops-pane");
+    var opCountEl = document.getElementById("op-count");
+    var opN = 0;
+
+    // ── Node registry ──
+    var nToId = new WeakMap(), idToN = new Map(), nxt = 0;
+    function gid() { return "n" + (nxt++); }
+    function aid(n) {
+      if (n.nodeType === 1) { var id = n.getAttribute(RDID); if (!id) { id = gid(); n.setAttribute(RDID, id); } nToId.set(n, id); idToN.set(id, n); return id; }
+      var id = nToId.get(n); if (!id) { id = gid(); nToId.set(n, id); idToN.set(id, n); } return id;
+    }
+    function wk(n) { aid(n); for (var i = 0; i < n.childNodes.length; i++) wk(n.childNodes[i]); }
+    function gidOf(n) { return nToId.get(n) || aid(n); }
+
+    // ── Serialize ──
+    function ser(n) {
+      var id = gidOf(n);
+      if (n.nodeType === 3) return { id:id, type:3, data:n.textContent||"" };
+      if (n.nodeType === 8) return { id:id, type:8, data:n.textContent||"" };
+      if (n.nodeType !== 1) return null;
+      var a = {}; for (var i = 0; i < n.attributes.length; i++) a[n.attributes[i].name] = n.attributes[i].value;
+      var ch = []; for (var i = 0; i < n.childNodes.length; i++) { var s = ser(n.childNodes[i]); if (s) ch.push(s); }
+      return { id:id, type:1, tag:n.tagName.toLowerCase(), attrs:a, children:ch };
+    }
+
+    // ── Observer (started after initial app build) ──
+    var observerInstance = null;
+    function startObserver() {
+      wk(source);
+      // Send initial snapshot so mirror has the starting state
+      mirrorBody.innerHTML = source.innerHTML;
+      if (observerInstance) observerInstance.disconnect();
+      observerInstance = new MutationObserver(function(muts) {
+      var ops = [];
+      for (var i = 0; i < muts.length; i++) {
+        var m = muts[i];
+        if (m.type === "attributes" && m.attributeName === RDID) continue;
+        if (m.type === "childList") {
+          var tid = gidOf(m.target), add = [], rem = [];
+          for (var j = 0; j < m.addedNodes.length; j++) { wk(m.addedNodes[j]); var s = ser(m.addedNodes[j]); if (s) add.push(s); }
+          for (var j = 0; j < m.removedNodes.length; j++) { var r = nToId.get(m.removedNodes[j]); if (r) rem.push(r); }
+          if (add.length || rem.length) ops.push({ type:"childList", targetId:tid, added:add, removed:rem, beforeId: m.nextSibling ? (nToId.get(m.nextSibling)||null) : null });
+        } else if (m.type === "attributes") {
+          ops.push({ type:"attributes", targetId:gidOf(m.target), name:m.attributeName, value:m.target.getAttribute(m.attributeName) });
+        } else if (m.type === "characterData") {
+          ops.push({ type:"characterData", targetId:gidOf(m.target), data:m.target.textContent });
+        }
+      }
+      if (ops.length) apply(ops);
+      });
+      observerInstance.observe(source, { childList:true, attributes:true, characterData:true, subtree:true });
+    }
+
+    // ── Applier + logger ──
+    function fnd(id) { return mirrorBody.querySelector("["+RDID+'="'+id+'"]'); }
+    function mk(s) {
+      if (s.type===3) { var t=document.createTextNode(s.data||""); t.__rdid=s.id; return t; }
+      if (s.type===8) { var c=document.createComment(s.data||""); c.__rdid=s.id; return c; }
+      var el=document.createElement(s.tag||"div");
+      if (s.attrs) for (var k in s.attrs) el.setAttribute(k,s.attrs[k]);
+      if (s.children) for (var i=0;i<s.children.length;i++) el.appendChild(mk(s.children[i]));
+      return el;
+    }
+
+    function apply(ops) {
+      for (var i = 0; i < ops.length; i++) {
+        var op = ops[i]; opN++; opCountEl.textContent = opN;
+
+        var d = "";
+        if (op.type==="childList") d = "+"+op.added.length+" -"+op.removed.length;
+        else if (op.type==="attributes") d = op.name+"="+(op.value!=null?'"'+op.value.slice(0,20)+'"':"null");
+        else if (op.type==="characterData") d = '"'+(op.data||"").slice(0,40)+'"';
+        var row = document.createElement("div"); row.className = "op-row";
+        row.innerHTML = '<span class="op-n">'+opN+'</span><span class="op-t t-'+op.type+'">'+op.type+'</span><span class="op-d">'+d.replace(/</g,"&lt;")+'</span>';
+        opsPane.appendChild(row);
+        opsPane.scrollTop = opsPane.scrollHeight;
+
+        if (op.type==="childList") {
+          var tgt = fnd(op.targetId);
+          if (!tgt && op.targetId === gidOf(source)) tgt = mirrorBody;
+          if (!tgt) continue;
+          for (var j=0;j<op.removed.length;j++) { var n=fnd(op.removed[j]); if(n)n.remove(); else for(var c of Array.from(tgt.childNodes)){if(c.__rdid===op.removed[j]){c.remove();break;}} }
+          var ref = op.beforeId ? fnd(op.beforeId) : null;
+          for (var j=0;j<op.added.length;j++) { var n=mk(op.added[j]); ref?tgt.insertBefore(n,ref):tgt.appendChild(n); }
+        } else if (op.type==="attributes") {
+          var t=fnd(op.targetId); if(t) op.value===null?t.removeAttribute(op.name):t.setAttribute(op.name,op.value);
+        } else if (op.type==="characterData") {
+          var w=document.createTreeWalker(mirrorBody,NodeFilter.SHOW_TEXT|NodeFilter.SHOW_COMMENT);
+          var n; while((n=w.nextNode())){if(n.__rdid===op.targetId){n.textContent=op.data;break;}}
+        }
+      }
+    }
+
+    // ── Build the interactive app in the source pane ──
+
+    function buildApp() {
+      source.innerHTML = "";
+
+      // Todo input
+      var form = document.createElement("div");
+      form.className = "todo-input";
+      var input = document.createElement("input");
+      input.type = "text"; input.placeholder = "Add a todo...";
+      var addBtn = document.createElement("button");
+      addBtn.textContent = "Add";
+      form.appendChild(input); form.appendChild(addBtn);
+      source.appendChild(form);
+
+      // Todo list container
+      var list = document.createElement("div");
+      list.id = "todo-list";
+      source.appendChild(list);
+
+      function addTodo(text) {
+        if (!text) return;
+        var item = document.createElement("div");
+        item.className = "todo-item";
+        var check = document.createElement("div"); check.className = "check";
+        var txt = document.createElement("span"); txt.className = "text"; txt.textContent = text;
+        var del = document.createElement("span"); del.className = "del"; del.textContent = "×";
+        item.appendChild(check); item.appendChild(txt); item.appendChild(del);
+        check.onclick = function() { item.classList.toggle("done"); };
+        del.onclick = function() { item.remove(); };
+        list.appendChild(item);
+      }
+
+      addBtn.onclick = function() { addTodo(input.value); input.value = ""; input.focus(); };
+      input.onkeydown = function(e) { if (e.key === "Enter") { addTodo(input.value); input.value = ""; } };
+
+      // Counter section
+      var counter = document.createElement("div");
+      counter.className = "counter-row";
+      var dec = document.createElement("button"); dec.textContent = "−";
+      var val = document.createElement("span"); val.className = "counter-val"; val.textContent = "0";
+      var inc = document.createElement("button"); inc.textContent = "+";
+      counter.appendChild(dec); counter.appendChild(val); counter.appendChild(inc);
+      source.appendChild(counter);
+
+      var count = 0;
+      inc.onclick = function() { count++; val.textContent = count; };
+      dec.onclick = function() { count--; val.textContent = count; };
+
+      // Seed some todos
+      addTodo("Try adding a todo");
+      addTodo("Click the checkbox to toggle");
+      addTodo("Click × to delete");
+    }
+
+    function clearAll() { buildApp(); opsPane.innerHTML = ""; opN = 0; opCountEl.textContent = "0"; startObserver(); }
+
+    buildApp();
+    startObserver();
+  </script>
+</body>
+</html>
